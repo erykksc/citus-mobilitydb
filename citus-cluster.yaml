@@ -1,0 +1,174 @@
+# ---------------------------
+# Coordinator Service
+# ---------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: citus-coordinator
+spec:
+  selector:
+    app: citus
+    role: coordinator
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# ---------------------------
+# Coordinator StatefulSet
+# ---------------------------
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: citus-coordinator
+spec:
+  serviceName: "citus-coordinator"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: citus
+      role: coordinator
+  template:
+    metadata:
+      labels:
+        app: citus
+        role: coordinator
+    spec:
+      containers:
+        - name: coordinator
+          image: ghcr.io/erykksc/mobilitydb-citus-docker:latest
+          env:
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_DB
+              value: postgres
+          ports:
+            - containerPort: 5432
+---
+# ---------------------------
+# Worker Headless Service
+# ---------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: citus-worker
+spec:
+  clusterIP: None
+  selector:
+    app: citus
+    role: worker
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# ---------------------------
+# Worker StatefulSet
+# ---------------------------
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: citus-worker
+spec:
+  serviceName: "citus-worker"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: citus
+      role: worker
+  template:
+    metadata:
+      labels:
+        app: citus
+        role: worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/erykksc/mobilitydb-citus-docker:latest
+          env:
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_DB
+              value: postgres
+          ports:
+            - containerPort: 5432
+---
+# ---------------------------
+# Manager RBAC
+# ---------------------------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: manager-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: manager-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: manager-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: manager-role
+subjects:
+- kind: ServiceAccount
+  name: manager-sa
+---
+# ---------------------------
+# Manager Deployment
+# ---------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: citus-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: citus-manager
+  template:
+    metadata:
+      labels:
+        app: citus-manager
+    spec:
+      serviceAccountName: manager-sa
+      containers:
+        - name: manager
+          image: your-dockerhub-user/citus-manager:latest  # <-- UPDATE THIS!
+          env:
+            - name: CITUS_HOST
+              value: citus-coordinator
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_DB
+              value: postgres
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: healthcheck
+              mountPath: /healthcheck
+          readinessProbe:
+            exec:
+              command:
+                - cat
+                - /healthcheck/manager-ready
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: healthcheck
+          emptyDir: {}
+
