@@ -1,8 +1,8 @@
 x-mobilitydb-base: &mobilitydb-base
   build:
     context: .
-    dockerfile: dockerfile
-  image: my-mobilitydb-citus-image:latest
+    dockerfile: Dockerfile
+  # image: my-mobilitydb-citus:latest
 
 services:
   coordinator:
