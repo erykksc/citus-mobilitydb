@@ -1,4 +1,27 @@
 # ---------------------------
+# Storage Class
+# ---------------------------
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: citus-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+# ---------------------------
+# PostgreSQL Secrets
+# ---------------------------
+apiVersion: v1
+kind: Secret
+metadata:
+  name: citus-secrets
+type: Opaque
+data:
+  POSTGRES_USER: cG9zdGdyZXM=         # base64 for 'postgres'
+  POSTGRES_PASSWORD: cG9zdGdyZXM=     # base64 for 'postgres'
+  POSTGRES_DB: cG9zdGdyZXM=           # base64 for 'postgres'
+---
+# ---------------------------
 # Coordinator Service
 # ---------------------------
 apiVersion: v1
@@ -38,15 +61,25 @@ spec:
       containers:
         - name: coordinator
           image: ghcr.io/erykksc/citus-mobilitydb:latest
-          env:
-            - name: POSTGRES_PASSWORD
-              value: postgres
-            - name: POSTGRES_USER
-              value: postgres
-            - name: POSTGRES_DB
-              value: postgres
+          envFrom:
+            - secretRef:
+                name: citus-secrets
           ports:
             - containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: citus-storage
+        resources:
+          requests:
+            storage: 10Gi
+          limits:
+            storage: 20Gi
 ---
 # ---------------------------
 # Worker Headless Service
@@ -87,15 +120,25 @@ spec:
       containers:
         - name: worker
           image: ghcr.io/erykksc/citus-mobilitydb:latest
-          env:
-            - name: POSTGRES_PASSWORD
-              value: postgres
-            - name: POSTGRES_USER
-              value: postgres
-            - name: POSTGRES_DB
-              value: postgres
+          envFrom:
+            - secretRef:
+                name: citus-secrets
           ports:
             - containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: citus-storage
+        resources:
+          requests:
+            storage: 5Gi
+          limits:
+            storage: 20Gi
 ---
 # ---------------------------
 # Manager RBAC
@@ -132,16 +175,16 @@ subjects:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: citus-k8s-manager
+  name: citus-manager
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: citus-k8s-manager
+      app: citus-manager
   template:
     metadata:
       labels:
-        app: citus-k8s-manager
+        app: citus-manager
     spec:
       serviceAccountName: manager-sa
       containers:
@@ -150,16 +193,13 @@ spec:
           env:
             - name: CITUS_HOST
               value: citus-coordinator
-            - name: POSTGRES_PASSWORD
-              value: postgres
-            - name: POSTGRES_USER
-              value: postgres
-            - name: POSTGRES_DB
-              value: postgres
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          envFrom:
+            - secretRef:
+                name: citus-secrets
           volumeMounts:
             - name: healthcheck
               mountPath: /healthcheck
