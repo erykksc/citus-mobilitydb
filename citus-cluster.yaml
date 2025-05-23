@@ -29,7 +29,7 @@ kind: Service
 metadata:
   name: citus-coordinator
 spec:
-  type: NodePort
+  type: NodePort # Recommended to change it to LoadBalancer when deploying in cloud
   selector:
     app: citus
     role: coordinator
@@ -69,6 +69,17 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -128,6 +139,17 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
   volumeClaimTemplates:
     - metadata:
         name: data
