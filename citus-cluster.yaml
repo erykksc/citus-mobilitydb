@@ -5,8 +5,8 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: citus-storage
-provisioner: kubernetes.io/no-provisioner
-volumeBindingMode: WaitForFirstConsumer
+provisioner: k8s.io/minikube-hostpath
+volumeBindingMode: Immediate
 ---
 # ---------------------------
 # PostgreSQL Secrets
@@ -58,6 +58,18 @@ spec:
         app: citus
         role: coordinator
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - citus
+              topologyKey: "kubernetes.io/hostname"
       containers:
         - name: coordinator
           image: ghcr.io/erykksc/citus-mobilitydb:latest
@@ -128,6 +140,18 @@ spec:
         app: citus
         role: worker
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - citus
+              topologyKey: "kubernetes.io/hostname"
       containers:
         - name: worker
           image: ghcr.io/erykksc/citus-mobilitydb:latest
