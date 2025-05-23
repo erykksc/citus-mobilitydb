@@ -41,24 +41,34 @@ def connect_to_master():
 
 def add_worker(conn, ip):
     cur = conn.cursor()
-    print(f"Adding worker {ip}", file=stderr)
-    cur.execute("SELECT master_add_node(%s, %s)", (ip, 5432))
+    try:
+        cur.execute("SELECT master_add_node(%s, %s)", (ip, 5432))
+        print(f"Worker {ip} added successfully", file=stderr)
+    except Exception as e:
+        print(f"Error adding worker {ip}: {e}", file=stderr)
+        raise e
 
 
 def remove_worker(conn, ip):
-    cur = conn.cursor()
-    print(f"Removing worker {ip}", file=stderr)
-    cur.execute("""
-        DELETE FROM pg_dist_placement WHERE groupid = (
-            SELECT groupid FROM pg_dist_node WHERE nodename = %s AND nodeport = %s LIMIT 1
-        );
-        SELECT master_remove_node(%s, %s);
-    """, (ip, 5432, ip, 5432))
+    print(f"Worker {ip} removed from the cluster, doing nothing", file=stderr)
 
 
 def graceful_shutdown(signalnum, frame):
     print("Shutting down...", file=stderr)
     exit(0)
+
+
+def discover_existing_workers(k8s, namespace, label_selector, conn):
+    """Find all existing running worker pods and add them to the cluster"""
+    print("Discovering existing worker pods...", file=stderr)
+    pods = k8s.list_namespaced_pod(
+        namespace=namespace, label_selector=label_selector)
+
+    for pod in pods.items:
+        if pod.status.phase == "Running" and pod.status.pod_ip:
+            print(
+                f"Discovered existing worker: {pod.status.pod_ip}", file=stderr)
+            add_worker(conn, pod.status.pod_ip)
 
 
 def watch_workers():
@@ -70,6 +80,9 @@ def watch_workers():
     namespace = os.environ.get("POD_NAMESPACE", "default")
     conn = connect_to_master()
 
+    # First discover existing workers
+    discover_existing_workers(k8s, namespace, label_selector, conn)
+
     # Signal ready for readiness/liveness probes
     open(HEALTHCHECK_FILE, 'a').close()
     print("Watching for worker pod events...", file=stderr)
@@ -80,17 +93,24 @@ def watch_workers():
             pod_ip = obj.status.pod_ip
             pod_phase = obj.status.phase
             event_type = event['type']
+            pod_name = obj.metadata.name
 
             if pod_ip is None:
                 continue
 
-            if event_type == "ADDED" and pod_phase == "Running":
+            # Handle pod added or modified to Running state
+            if event_type in ["ADDED", "MODIFIED"] and pod_phase == "Running":
+                print(
+                    f"Pod {pod_name} is running with IP {pod_ip}", file=stderr)
                 add_worker(conn, pod_ip)
             elif event_type == "DELETED":
+                print(f"Pod {pod_name} was deleted", file=stderr)
                 remove_worker(conn, pod_ip)
 
     except Exception as e:
         print(f"Exception while watching pods: {e}", file=stderr)
+        # Let the pod die so Kubernetes can restart it
+        raise
 
 
 def main():
