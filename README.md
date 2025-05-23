@@ -42,6 +42,11 @@ kubectl logs -l app=citus-manager
 kubectl logs citus-coordinator-0
 ```
 
+A script for creating a tmux window for monitoring is provided:
+```bash
+CLUSTERIP=$(minikube ip) ./monitor-deployment.sh
+```
+
 ## Scaling
 
 To scale the number of worker nodes:

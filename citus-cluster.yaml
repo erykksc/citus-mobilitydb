@@ -6,12 +6,14 @@ kind: Service
 metadata:
   name: citus-coordinator
 spec:
+  type: NodePort
   selector:
     app: citus
     role: coordinator
   ports:
     - port: 5432
       targetPort: 5432
+      nodePort: 32345
 ---
 # ---------------------------
 # Coordinator StatefulSet
