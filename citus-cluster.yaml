@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
         - name: coordinator
-          image: ghcr.io/erykksc/mobilitydb-citus-docker:latest
+          image: ghcr.io/erykksc/citus-mobilitydb:latest
           env:
             - name: POSTGRES_PASSWORD
               value: postgres
@@ -71,7 +71,7 @@ metadata:
   name: citus-worker
 spec:
   serviceName: "citus-worker"
-  replicas: 2
+  replicas: 10
   selector:
     matchLabels:
       app: citus
@@ -84,7 +84,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: ghcr.io/erykksc/mobilitydb-citus-docker:latest
+          image: ghcr.io/erykksc/citus-mobilitydb:latest
           env:
             - name: POSTGRES_PASSWORD
               value: postgres
@@ -144,7 +144,7 @@ spec:
       serviceAccountName: manager-sa
       containers:
         - name: manager
-          image: your-dockerhub-user/citus-manager:latest  # <-- UPDATE THIS!
+          image: ghcr.io/erykksc/citus-mobilitydb-manager:latest
           env:
             - name: CITUS_HOST
               value: citus-coordinator

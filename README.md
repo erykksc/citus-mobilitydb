@@ -27,13 +27,6 @@ This repository contains configuration for deploying a distributed PostgreSQL cl
 - **Workers**: Distributed PostgreSQL nodes that store sharded data
 - **Manager**: Kubernetes-aware service that automatically registers/deregisters worker nodes
 
-## Configuration
-
-Before deploying, update the manager image in `citus-cluster.yaml`:
-```yaml
-image: your-dockerhub-user/citus-manager:latest  # <-- UPDATE THIS!
-```
-
 ## Monitoring
 
 Check the status of your Citus cluster:
@@ -65,16 +58,6 @@ Connect to the coordinator node:
 
 ```bash
 kubectl exec -it citus-coordinator-0 -- psql -U postgres
-```
-
-## Building Custom Images
-
-Build and push the manager Docker image:
-
-```bash
-cd manager_k8s
-docker build -t your-dockerhub-user/citus-manager:latest .
-docker push your-dockerhub-user/citus-manager:latest
 ```
 
 ## Cleanup
