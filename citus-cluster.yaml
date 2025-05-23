@@ -130,16 +130,16 @@ subjects:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: citus-manager
+  name: citus-k8s-manager
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: citus-manager
+      app: citus-k8s-manager
   template:
     metadata:
       labels:
-        app: citus-manager
+        app: citus-k8s-manager
     spec:
       serviceAccountName: manager-sa
       containers:
