@@ -54,3 +54,10 @@ jobs:
           package-name: ${{ github.event.repository.name }}
           package-type: "container"
           min-versions-to-keep: 5
+
+      - name: Delete old images of manager
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: citus-mobilitydb-manager
+          package-type: "container"
+          min-versions-to-keep: 0
