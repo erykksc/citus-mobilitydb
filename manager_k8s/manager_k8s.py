@@ -131,8 +131,17 @@ def watch_workers():
 
     # Signal ready for readiness/liveness probes
     open(HEALTHCHECK_FILE, "a").close()
-    print("Starting periodic worker synchronization...", file=stderr)
-    print(f"Using sync interval of {SCAN_INTERVAL_SECONDS} seconds", file=stderr)
+
+    manager_config = {
+        "namespace": namespace,
+        "label_selector": label_selector,
+        "scan_interval": SCAN_INTERVAL_SECONDS,
+    }
+    print(
+        "Starting periodic worker synchronization with config",
+        manager_config,
+        file=stderr,
+    )
     while True:
         try:
             sync_workers(k8s, namespace, label_selector, conn)
