@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+import logging
 import os
 import signal
-from sys import exit, stderr
+from sys import exit
 from time import sleep
 
 import psycopg2
@@ -10,6 +11,14 @@ from kubernetes import client, config
 
 HEALTHCHECK_FILE = "/healthcheck/manager-ready"
 SCAN_INTERVAL_SECONDS = int(os.environ.get("SCAN_INTERVAL_SECONDS", "20"))
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+logger = logging.getLogger(__name__)
 
 
 # Connect to Citus master
@@ -29,12 +38,12 @@ def connect_to_master():
                 password=postgres_pass,
             )
         except psycopg2.OperationalError:
-            print(f"Could not connect to {citus_host}, retrying...", file=stderr)
+            logger.warning(f"Could not connect to {citus_host}, retrying...")
             sleep(1)
         except Exception as e:
             raise e
     conn.autocommit = True
-    print(f"Connected to {citus_host}", file=stderr)
+    logger.info(f"Connected to {citus_host}")
     return conn
 
 
@@ -45,7 +54,7 @@ def get_citus_nodes(conn):
         cur.execute("SELECT nodename FROM pg_dist_node WHERE nodeport = 5432")
         return [row[0] for row in cur.fetchall()]
     except Exception as e:
-        print(f"Error getting Citus nodes: {e}", file=stderr)
+        logger.error(f"Error getting Citus nodes: {e}")
         return []
 
 
@@ -61,17 +70,17 @@ def add_worker(conn, ip):
         if cur.fetchone() is None:
             # Node doesn't exist, add it
             cur.execute("SELECT master_add_node(%s, %s)", (ip, 5432))
-            print(f"Worker {ip} added successfully", file=stderr)
+            logger.info(f"Worker {ip} added successfully")
         else:
-            print(f"Worker {ip} already exists in the cluster", file=stderr)
+            logger.info(f"Worker {ip} already exists in the cluster")
     except Exception as e:
-        print(f"Error adding worker {ip}: {e}", file=stderr)
+        logger.error(f"Error adding worker {ip}: {e}")
         # Don't raise the exception to avoid crashing the manager
 
 
 def graceful_shutdown(signalnum, frame):
     """Handle graceful shutdown on SIGTERM"""
-    print("Shutting down...", file=stderr)
+    logger.info("Shutting down...")
     exit(0)
 
 
@@ -96,21 +105,21 @@ def get_ready_worker_pods(k8s, namespace, label_selector):
 
 def sync_workers(k8s, namespace, label_selector, conn):
     """Synchronize Kubernetes worker pods with Citus nodes"""
-    print("Synchronizing worker nodes...", file=stderr)
+    logger.info("Synchronizing worker nodes...")
 
     # Get current Citus nodes
     citus_nodes = get_citus_nodes(conn)
-    print(f"Current Citus nodes: {citus_nodes}", file=stderr)
+    logger.info(f"Current Citus nodes: {citus_nodes}")
 
     # Get ready worker pods
     ready_pods = get_ready_worker_pods(k8s, namespace, label_selector)
     ready_pod_ips = [pod.status.pod_ip for pod in ready_pods]
-    print(f"Ready worker pods: {ready_pod_ips}", file=stderr)
+    logger.info(f"Ready worker pods: {ready_pod_ips}")
 
     # Add missing workers
     for pod in ready_pods:
         if pod.status.pod_ip not in citus_nodes:
-            print(f"Adding missing worker: {pod.status.pod_ip}", file=stderr)
+            logger.info(f"Adding missing worker: {pod.status.pod_ip}")
             add_worker(conn, pod.status.pod_ip)
 
 
@@ -137,10 +146,8 @@ def watch_workers():
         "label_selector": label_selector,
         "scan_interval": SCAN_INTERVAL_SECONDS,
     }
-    print(
-        "Starting periodic worker synchronization with config",
-        manager_config,
-        file=stderr,
+    logger.info(
+        f"Starting periodic worker synchronization with config: {manager_config}",
     )
     while True:
         try:
@@ -148,7 +155,7 @@ def watch_workers():
             sleep(SCAN_INTERVAL_SECONDS)
 
         except Exception as e:
-            print(f"Error during sync: {e}", file=stderr)
+            logger.error(f"Error during sync: {e}")
             # Let the pod die so Kubernetes can restart it
             raise
 
