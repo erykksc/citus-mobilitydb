@@ -8,19 +8,16 @@ from time import sleep
 import psycopg2
 from kubernetes import client, config
 
-HEALTHCHECK_FILE = '/healthcheck/manager-ready'
+HEALTHCHECK_FILE = "/healthcheck/manager-ready"
+SCAN_INTERVAL_SECONDS = int(os.environ.get("SCAN_INTERVAL_SECONDS", "20"))
 
-# Default scan interval in seconds
-DEFAULT_SCAN_INTERVAL = 20
 
 # Connect to Citus master
-
-
 def connect_to_master():
-    citus_host = os.environ.get('CITUS_HOST', 'master')
-    postgres_pass = os.environ.get('POSTGRES_PASSWORD', '')
-    postgres_user = os.environ.get('POSTGRES_USER', 'postgres')
-    postgres_db = os.environ.get('POSTGRES_DB', postgres_user)
+    citus_host = os.environ.get("CITUS_HOST")
+    postgres_pass = os.environ.get("POSTGRES_PASSWORD")
+    postgres_user = os.environ.get("POSTGRES_USER")
+    postgres_db = os.environ.get("POSTGRES_DB")
 
     conn = None
     while conn is None:
@@ -29,11 +26,10 @@ def connect_to_master():
                 dbname=postgres_db,
                 user=postgres_user,
                 host=citus_host,
-                password=postgres_pass
+                password=postgres_pass,
             )
         except psycopg2.OperationalError:
-            print(
-                f"Could not connect to {citus_host}, retrying...", file=stderr)
+            print(f"Could not connect to {citus_host}, retrying...", file=stderr)
             sleep(1)
         except Exception as e:
             raise e
@@ -59,7 +55,9 @@ def add_worker(conn, ip):
     try:
         # Check if node already exists
         cur.execute(
-            "SELECT nodeid FROM pg_dist_node WHERE nodename = %s AND nodeport = 5432", (ip,))
+            "SELECT nodeid FROM pg_dist_node WHERE nodename = %s AND nodeport = 5432",
+            (ip,),
+        )
         if cur.fetchone() is None:
             # Node doesn't exist, add it
             cur.execute("SELECT master_add_node(%s, %s)", (ip, 5432))
@@ -79,15 +77,14 @@ def graceful_shutdown(signalnum, frame):
 
 def get_ready_worker_pods(k8s, namespace, label_selector):
     """Get all ready worker pods in the namespace"""
-    pods = k8s.list_namespaced_pod(
-        namespace=namespace, label_selector=label_selector)
+    pods = k8s.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
 
     ready_pods = []
     for pod in pods.items:
         is_ready = False
         if pod.status.conditions:
             for condition in pod.status.conditions:
-                if condition.type == 'Ready' and condition.status == 'True':
+                if condition.type == "Ready" and condition.status == "True":
                     is_ready = True
                     break
 
@@ -122,23 +119,24 @@ def watch_workers():
     config.load_incluster_config()
     k8s = client.CoreV1Api()
 
-    label_selector = 'app=citus,role=worker'
-    namespace = os.environ.get("POD_NAMESPACE", "default")
+    namespace = os.environ.get("POD_NAMESPACE")
+
+    label_selector = os.environ.get("LABEL_SELECTOR")
+    if label_selector == None:
+        raise ValueError(
+            "LABEL_SELECTOR environment variable must be set to be able to find mobilitydbc worker nodes"
+        )
+
     conn = connect_to_master()
 
-    # Get scan interval from environment variable or use default
-    scan_interval = int(os.environ.get(
-        "SYNC_INTERVAL_SECONDS", DEFAULT_SCAN_INTERVAL))
-    print(f"Using sync interval of {scan_interval} seconds", file=stderr)
-
     # Signal ready for readiness/liveness probes
-    open(HEALTHCHECK_FILE, 'a').close()
+    open(HEALTHCHECK_FILE, "a").close()
     print("Starting periodic worker synchronization...", file=stderr)
-
+    print(f"Using sync interval of {SCAN_INTERVAL_SECONDS} seconds", file=stderr)
     while True:
         try:
             sync_workers(k8s, namespace, label_selector, conn)
-            sleep(scan_interval)
+            sleep(SCAN_INTERVAL_SECONDS)
 
         except Exception as e:
             print(f"Error during sync: {e}", file=stderr)

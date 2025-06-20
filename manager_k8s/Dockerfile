@@ -1,5 +1,14 @@
 FROM python:3.11-slim
 
+ENV CITUS_HOST=master
+ENV POSTGRES_DB=postgres
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres
+ENV LABEL_SELECTOR="app=citus,role=worker"
+ENV POD_NAMESPACE=default
+ENV SCAN_INTERVAL_SECONDS=20
+
+
 # Install system dependencies for psycopg2
 RUN apt-get update && \
     apt-get install -y gcc libpq-dev && \
