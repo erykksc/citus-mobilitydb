@@ -17,9 +17,9 @@ metadata:
   name: citus-secrets
 type: Opaque
 data:
-  POSTGRES_USER: cG9zdGdyZXM=         # base64 for 'postgres'
-  POSTGRES_PASSWORD: cG9zdGdyZXM=     # base64 for 'postgres'
-  POSTGRES_DB: cG9zdGdyZXM=           # base64 for 'postgres'
+  POSTGRES_USER: cG9zdGdyZXM= # base64 for 'postgres'
+  POSTGRES_PASSWORD: cG9zdGdyZXM= # base64 for 'postgres'
+  POSTGRES_DB: cG9zdGdyZXM= # base64 for 'postgres'
 ---
 # ---------------------------
 # Coordinator Service
@@ -61,15 +61,15 @@ spec:
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - citus
-              topologyKey: "kubernetes.io/hostname"
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - citus
+                topologyKey: "kubernetes.io/hostname"
       containers:
         - name: coordinator
           image: ghcr.io/erykksc/citus-mobilitydb:latest
@@ -143,15 +143,15 @@ spec:
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - citus
-              topologyKey: "kubernetes.io/hostname"
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - citus
+                topologyKey: "kubernetes.io/hostname"
       containers:
         - name: worker
           image: ghcr.io/erykksc/citus-mobilitydb:latest
@@ -199,9 +199,9 @@ kind: Role
 metadata:
   name: manager-role
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -212,8 +212,8 @@ roleRef:
   kind: Role
   name: manager-role
 subjects:
-- kind: ServiceAccount
-  name: manager-sa
+  - kind: ServiceAccount
+    name: manager-sa
 ---
 # ---------------------------
 # Manager Deployment
@@ -235,7 +235,7 @@ spec:
       serviceAccountName: manager-sa
       containers:
         - name: manager
-          image: ghcr.io/erykksc/citus-mobilitydb-manager:latest
+          image: ghcr.io/erykksc/citus-k8s-manager:latest
           env:
             - name: CITUS_HOST
               value: citus-coordinator
@@ -245,6 +245,8 @@ spec:
                   fieldPath: metadata.namespace
             - name: SYNC_INTERVAL_SECONDS
               value: "20"
+            - name: LABEL_SELECTOR
+              value: "app=citus,role=worker"
           envFrom:
             - secretRef:
                 name: citus-secrets
@@ -261,4 +263,3 @@ spec:
       volumes:
         - name: healthcheck
           emptyDir: {}
-

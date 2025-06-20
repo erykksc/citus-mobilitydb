@@ -11,6 +11,7 @@ This repository contains configuration for deploying a distributed PostgreSQL cl
 ## Quick Start
 
 1. Deploy the entire Citus cluster:
+
    ```bash
    kubectl apply -f citus-cluster.yaml
    ```
@@ -43,6 +44,7 @@ kubectl logs citus-coordinator-0
 ```
 
 A script for creating a tmux window for monitoring is provided:
+
 ```bash
 CLUSTERIP=$(minikube ip) ./monitor-deployment.sh
 ```
@@ -78,11 +80,13 @@ kubectl delete -f citus-cluster.yaml
 If workers aren't being registered:
 
 1. Check manager logs:
+
    ```bash
    kubectl logs -l app=citus-manager
    ```
 
 2. Verify the manager has the correct permissions:
+
    ```bash
    kubectl auth can-i get pods --as=system:serviceaccount:default:manager-sa
    ```
