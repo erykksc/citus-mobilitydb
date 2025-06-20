@@ -95,3 +95,7 @@ If workers aren't being registered:
    ```bash
    kubectl exec -it $(kubectl get pod -l app=citus-manager -o name) -- cat /healthcheck/manager-ready
    ```
+
+## Manager migration
+
+> The manager script and its dockerfile has been moved to a [https://github.com/erykksc/citus-k8s-manager](https://github.com/erykksc/citus-k8s-manager)
