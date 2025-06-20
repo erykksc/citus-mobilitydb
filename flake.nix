@@ -5,7 +5,8 @@
   inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
 
   # Flake outputs
-  outputs = inputs:
+  outputs =
+    inputs:
     let
       # The systems supported for this flake
       supportedSystems = [
@@ -16,29 +17,36 @@
       ];
 
       # Helper to provide system-specific attributes
-      forEachSupportedSystem = f: inputs.nixpkgs.lib.genAttrs supportedSystems (system: f {
-        pkgs = import inputs.nixpkgs { inherit system; };
-      });
+      forEachSupportedSystem =
+        f:
+        inputs.nixpkgs.lib.genAttrs supportedSystems (
+          system:
+          f {
+            pkgs = import inputs.nixpkgs { inherit system; };
+          }
+        );
       /*
-       * Change this value ({major}.{min}) to
-       * update the Python virtual-environment
-       * version. When you do this, make sure
-       * to delete the `.venv` directory to
-       * have the hook rebuild it for the new
-       * version, since it won't overwrite an
-       * existing one. After this, reload the
-       * development shell to rebuild it.
-       * You'll see a warning asking you to
-       * do this when version mismatches are
-       * present. For safety, removal should
-       * be a manual step, even if trivial.
-       */
+        Change this value ({major}.{min}) to
+        update the Python virtual-environment
+        version. When you do this, make sure
+        to delete the `.venv` directory to
+        have the hook rebuild it for the new
+        version, since it won't overwrite an
+        existing one. After this, reload the
+        development shell to rebuild it.
+        You'll see a warning asking you to
+        do this when version mismatches are
+        present. For safety, removal should
+        be a manual step, even if trivial.
+      */
       pythonVersion = "3.13";
     in
     {
-      devShells = forEachSupportedSystem ({ pkgs }:
+      devShells = forEachSupportedSystem (
+        { pkgs }:
         let
-          concatMajorMinor = v:
+          concatMajorMinor =
+            v:
             pkgs.lib.pipe v [
               pkgs.lib.versions.splitVersion
               (pkgs.lib.sublist 0 2)
@@ -67,16 +75,17 @@
               venvVersionWarn
             '';
 
-			packages = [
-							pkgs.nixfmt-rfc-style
+            packages = [
+              pkgs.nixfmt-rfc-style
               python.pkgs.venvShellHook
               python.pkgs.pip
 
-            pkgs.kubectl
-            pkgs.postgresql_17
+              pkgs.kubectl
+              pkgs.postgresql_17
 
-							];
+            ];
           };
-        });
-	};
+        }
+      );
+    };
 }
