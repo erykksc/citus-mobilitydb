@@ -29,7 +29,6 @@ RUN mkdir -p /healthcheck
 
 # Set environment variables for healthcheck
 ENV PYTHONUNBUFFERED=1
-ENV SYNC_INTERVAL_SECONDS=20
 
 # Set entrypoint
 ENTRYPOINT ["python", "manager_k8s.py"]
