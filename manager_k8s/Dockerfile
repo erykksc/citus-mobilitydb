@@ -32,4 +32,3 @@ ENV PYTHONUNBUFFERED=1
 
 # Set entrypoint
 ENTRYPOINT ["python", "manager_k8s.py"]
-
