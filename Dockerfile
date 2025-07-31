@@ -1,4 +1,4 @@
-FROM postgres:17.2
+FROM postgres:17
 
 # install Citus and Mobilitydb
 RUN apt-get update \
@@ -8,7 +8,6 @@ RUN apt-get update \
     && curl -s https://install.citusdata.com/community/deb.sh | bash \
     && apt-get install -y postgresql-17-citus-13.0 \
                           postgresql-17-mobilitydb \
-                          postgresql-17-postgis-3 \
     && apt-get purge -y --auto-remove curl \
     && rm -rf /var/lib/apt/lists/*
 
