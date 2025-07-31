@@ -1,18 +1,14 @@
 FROM postgres:17.2
 
-ARG CITUS_VERSION=13.0.3.citus-1
-
 # install Citus and Mobilitydb
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \
        curl \
     && curl -s https://install.citusdata.com/community/deb.sh | bash \
-    && apt-get install -y postgresql-17-citus-13.0=$CITUS_VERSION \
-                          postgresql-17-hll=2.18.citus-1 \
-                          postgresql-17-mobilitydb=1.2.0-2.pgdg120+1 \
-                          postgresql-17-postgis-3=3.5.3+dfsg-1~exp1.pgdg120+1 \
-                          postgresql-17-topn=2.7.0.citus-1 \
+    && apt-get install -y postgresql-17-citus-13.0 \
+                          postgresql-17-mobilitydb \
+                          postgresql-17-postgis-3 \
     && apt-get purge -y --auto-remove curl \
     && rm -rf /var/lib/apt/lists/*
 
