@@ -2,6 +2,8 @@
 
 This repository contains configuration for deploying a distributed PostgreSQL cluster running MobilityDB using Citus on Kubernetes with automatic worker management.
 
+**This has been developed as a part of my [bachelor thesis](https://github.com/erykksc/bachelor-thesis)**
+
 ## Prerequisites
 
 - Kubernetes cluster
